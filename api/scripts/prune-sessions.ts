@@ -11,13 +11,16 @@ import { pruneExpiredSessions } from '../src/modules/auth/auth.service.js'
  *
  * `pruneExpiredSessions` was written with a doc comment saying "safe to run from
  * a cron", and then nothing ever called it — no scheduler, no job runner, no
- * script. Auth here is STATEFUL: every sign-in writes a row, and every refresh
- * rotation writes another. Nothing removed them, so the `sessions` table grew
- * without bound.
+ * script.
  *
- * That is not merely untidy. The table is on the hot path — `authenticate` looks
- * a session up on every single request — and it is billed by storage on Neon.
- * An unbounded table on the hot path gets slower and more expensive forever.
+ * Auth here is STATEFUL: every sign-in writes a session row. Refresh rotates the
+ * token in place rather than inserting, so the growth is one row per sign-in, not
+ * per request — but nothing ever deleted them, so the table only grew.
+ *
+ * A row stops being usable after 30 days (absolute ceiling), after 7 days idle,
+ * or the moment it is revoked. Those rows can never authenticate anything again;
+ * they are pure weight in a table `authenticate` reads on every request and Neon
+ * bills by storage.
  *
  * A `pg-boss` dependency was installed, presumably for exactly this, and never
  * imported. Rather than stand up a job queue for one periodic delete, this is a
