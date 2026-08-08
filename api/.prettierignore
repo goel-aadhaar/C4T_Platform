@@ -1,0 +1,10 @@
+dist/
+node_modules/
+coverage/
+.uploads/
+prisma/migrations/
+*.log
+
+# Prisma has its own formatter — use `npm run prisma:format`.
+# Prettier would fight it over field alignment.
+*.prisma

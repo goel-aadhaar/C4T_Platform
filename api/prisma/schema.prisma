@@ -1,0 +1,1050 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Crowd4Test Platform — PostgreSQL data model
+//
+// STATUS: REFERENCE SCHEMA, PENDING RECONCILIATION.
+//
+// Service Agreement §2.6 and §9.1 make the Client responsible for supplying the
+// database schema before backend development begins, and make the Service
+// Provider responsible for reviewing, validating and refining it. That schema
+// had not been supplied at the time this file was written, so this is a
+// good-faith reference model derived from:
+//   - §2.1  the five-role access model
+//   - §2.2  Module A, Admin Panel feature areas
+//   - §2.3  Module B, Tester Portal
+//   - §2.4  Module C, Customer Portal
+//   - §2.8  migration of existing data from the live MySQL database
+//
+// When the Client's schema arrives, diff it against this file and record the
+// outcome in docs/SCHEMA-RECONCILIATION.md. Anything the Client's schema
+// requires that is not modelled here is a §6 scope conversation.
+//
+// MIGRATION NOTE: every entity that can carry data forward from the existing
+// MySQL platform has a nullable `legacyId`. Populate it during migration so old
+// rows stay traceable to their source and the migration can be re-run safely.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+
+  /// Pooled connection, used for ordinary queries at runtime.
+  /// On Neon this is the endpoint containing `-pooler`.
+  url = env("DATABASE_URL")
+
+  /// Direct, UNPOOLED connection, used only by `prisma migrate` and
+  /// `prisma db push`.
+  ///
+  /// This is not optional on Neon. Migrations take advisory locks and issue
+  /// DDL that PgBouncer in transaction-pooling mode cannot carry, so running
+  /// them through the pooled endpoint fails with errors that look like
+  /// deadlocks or "prepared statement already exists" rather than anything
+  /// pointing at the pooler.
+  ///
+  /// If you are not using a pooled connection, set both to the same value.
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+/// §2.1 — the five roles. USER is the pre-onboarding state: a registered
+/// visitor who has not yet been converted into a Customer or a Tester.
+enum Role {
+  USER
+  CUSTOMER
+  TESTER
+  ADMIN
+  SUB_ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum OrganisationStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum OrgMemberRole {
+  OWNER
+  MEMBER
+}
+
+/// Tester onboarding pipeline, §2.2 "Crowd Tester Management".
+enum TesterStatus {
+  APPLIED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum DeviceType {
+  MOBILE
+  TABLET
+  DESKTOP
+  SMART_TV
+  WEARABLE
+  OTHER
+}
+
+enum ProjectStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum AssignmentStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  ACTIVE
+  COMPLETED
+  REMOVED
+}
+
+enum BugSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum BugStatus {
+  NEW
+  TRIAGED
+  CONFIRMED
+  IN_PROGRESS
+  FIXED
+  VERIFIED
+  REOPENED
+  REJECTED
+  DUPLICATE
+  WONT_FIX
+}
+
+enum BugReproducibility {
+  ALWAYS
+  SOMETIMES
+  ONCE
+  UNABLE_TO_REPRODUCE
+}
+
+/// §2.2 "Communication" — threads between Customers, Testers and Admin.
+enum ThreadType {
+  PROJECT
+  SUPPORT
+  DIRECT
+}
+
+enum RatingSubjectType {
+  TESTER
+  CUSTOMER
+  PROJECT
+}
+
+/// §2.2 "Transactions" — billing and payment RECORDS.
+/// §5 explicitly excludes payment-gateway integration from scope, so these are
+/// bookkeeping rows entered/managed by Admin, not live gateway transactions.
+enum TransactionType {
+  CUSTOMER_INVOICE
+  CUSTOMER_PAYMENT
+  TESTER_EARNING
+  TESTER_PAYOUT
+  ADJUSTMENT
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum NotificationType {
+  PROJECT_ASSIGNED
+  PROJECT_STATUS_CHANGED
+  BUG_REPORTED
+  BUG_STATUS_CHANGED
+  MESSAGE_RECEIVED
+  RATING_RECEIVED
+  TRANSACTION_UPDATED
+  TESTER_STATUS_CHANGED
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+enum AnnouncementAudience {
+  ALL
+  CUSTOMERS
+  TESTERS
+  ADMINS
+}
+
+enum FileScope {
+  PROJECT_MATERIAL
+  BUG_ATTACHMENT
+  MESSAGE_ATTACHMENT
+  TESTER_DOCUMENT
+  AVATAR
+  ORG_LOGO
+  OTHER
+}
+
+/// Sales pipeline state for a marketing-site enquiry.
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  /// Converted into an Organisation + Customer. `convertedOrgId` records which.
+  WON
+  LOST
+  /// Caught by the honeypot or triage. Kept, not deleted, so the filter can be
+  /// tuned against real traffic instead of guesses.
+  SPAM
+}
+
+// ─── Identity & access ───────────────────────────────────────────────────────
+
+model User {
+  id              String     @id @default(cuid())
+  legacyId        String?    @unique @map("legacy_id")
+  email           String     @unique
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  passwordHash    String     @map("password_hash")
+  role            Role       @default(USER)
+  status          UserStatus @default(PENDING_VERIFICATION)
+
+  firstName    String? @map("first_name")
+  lastName     String? @map("last_name")
+  phone        String?
+  countryCode  String? @map("country_code") // ISO 3166-1 alpha-2
+  timezone     String?
+  avatarFileId String? @map("avatar_file_id")
+
+  lastLoginAt      DateTime? @map("last_login_at")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  avatar FileObject? @relation("UserAvatar", fields: [avatarFileId], references: [id], onDelete: SetNull)
+
+  sessions           Session[]
+  passwordResets     PasswordResetToken[]
+  emailTokens        EmailVerificationToken[]
+  permissions        UserPermission[]         @relation("PermissionHolder")
+  permissionsGranted UserPermission[]         @relation("PermissionGranter")
+
+  orgMemberships OrganisationMember[]
+  testerProfile  TesterProfile?
+
+  projectsCreated Project[]           @relation("ProjectCreatedBy")
+  projectsManaged ManagerAssignment[]
+  assignments     ProjectAssignment[]
+
+  bugsReported     Bug[]              @relation("BugReporter")
+  bugStatusChanges BugStatusHistory[]
+  bugComments      BugComment[]
+
+  threadsCreated       Thread[]            @relation("ThreadCreatedBy")
+  threadParticipations ThreadParticipant[]
+  messagesSent         Message[]
+
+  ratingsGiven    Rating[] @relation("RatingAuthor")
+  ratingsReceived Rating[] @relation("RatingSubjectUser")
+
+  transactionsAsCounterparty Transaction[] @relation("TransactionCounterparty")
+  transactionsRecorded       Transaction[] @relation("TransactionRecordedBy")
+
+  notifications Notification[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
+  auditLogs     AuditLog[]
+  filesUploaded FileObject[]   @relation("FileUploader")
+
+  @@index([role, status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// A single sign-in on a single device.
+///
+/// Auth is STATEFUL: every access token carries this row's id in its `sid`
+/// claim, and the token is only accepted while the row is live. A valid
+/// signature is necessary but not sufficient — revoking the session cuts access
+/// on the very next request rather than whenever the token happens to expire.
+///
+/// The refresh token rotates in place on this row. `previousTokenHash` retains
+/// the superseded value so a replayed token is detectable as theft.
+model Session {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+
+  /// SHA-256 of the current refresh token. The raw value is never stored.
+  refreshTokenHash  String  @unique @map("refresh_token_hash")
+  /// SHA-256 of the token this one replaced. Presenting it means replay.
+  previousTokenHash String? @unique @map("previous_token_hash")
+  rotationCount     Int     @default(0) @map("rotation_count")
+
+  userAgent String? @map("user_agent")
+  ipAddress String? @map("ip_address")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  lastUsedAt        DateTime @default(now()) @map("last_used_at")
+  /// Hard ceiling. The session dies here however active it has been.
+  absoluteExpiresAt DateTime @map("absolute_expires_at")
+  /// Sliding window. Extended on each refresh; an idle session lapses.
+  idleExpiresAt     DateTime @map("idle_expires_at")
+
+  revokedAt     DateTime? @map("revoked_at")
+  /// "logout" | "logout_all" | "token_reuse" | "password_changed" |
+  /// "password_reset" | "account_suspended" | "account_deleted" | "admin"
+  revokedReason String?   @map("revoked_reason")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([absoluteExpiresAt])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+/// §2.2 "Sub-Admin Permissions" — the catalogue of grantable capabilities.
+/// ADMIN implicitly holds every permission; SUB_ADMIN holds only what is granted.
+model Permission {
+  id          String   @id @default(cuid())
+  /// Stable machine code, e.g. "project.manage". Never rename — grant rows key on it.
+  code        String   @unique
+  /// Grouping for the admin UI, e.g. "Projects", "Testers".
+  group       String
+  label       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  grants UserPermission[]
+
+  @@index([group])
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  permissionId String   @map("permission_id")
+  grantedById  String?  @map("granted_by_id")
+  grantedAt    DateTime @default(now()) @map("granted_at")
+
+  user       User       @relation("PermissionHolder", fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy  User?      @relation("PermissionGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@map("user_permissions")
+}
+
+// ─── Organisations (Customer accounts) ───────────────────────────────────────
+
+/// §2.2 "Organisation Management" — Customer organisations/accounts.
+model Organisation {
+  id       String             @id @default(cuid())
+  legacyId String?            @unique @map("legacy_id")
+  name     String
+  slug     String             @unique
+  status   OrganisationStatus @default(PENDING)
+
+  website      String?
+  industry     String?
+  contactEmail String? @map("contact_email")
+  contactPhone String? @map("contact_phone")
+  addressLine1 String? @map("address_line1")
+  addressLine2 String? @map("address_line2")
+  city         String?
+  state        String?
+  postalCode   String? @map("postal_code")
+  countryCode  String? @map("country_code")
+  taxId        String? @map("tax_id") // GSTIN / VAT
+  logoFileId   String? @map("logo_file_id")
+
+  notes       String? // internal admin notes
+  onboardedAt DateTime? @map("onboarded_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  logo         FileObject?          @relation("OrgLogo", fields: [logoFileId], references: [id], onDelete: SetNull)
+  members      OrganisationMember[]
+  projects     Project[]
+  transactions Transaction[]
+  /// Marketing enquiries that converted into this organisation.
+  leads        Lead[]
+
+  @@index([status])
+  @@index([name])
+  @@map("organisations")
+}
+
+model OrganisationMember {
+  id             String        @id @default(cuid())
+  organisationId String        @map("organisation_id")
+  userId         String        @map("user_id")
+  orgRole        OrgMemberRole @default(MEMBER) @map("org_role")
+  invitedAt      DateTime?     @map("invited_at")
+  joinedAt       DateTime?     @map("joined_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, userId])
+  @@index([userId])
+  @@map("organisation_members")
+}
+
+// ─── Testers ─────────────────────────────────────────────────────────────────
+
+/// §2.2 "Crowd Tester Management" + §2.3 tester profile.
+model TesterProfile {
+  id       String       @id @default(cuid())
+  legacyId String?      @unique @map("legacy_id")
+  userId   String       @unique @map("user_id")
+  status   TesterStatus @default(APPLIED)
+
+  headline        String? // e.g. "Localization Tester"
+  bio             String?
+  experienceYears Int?    @map("experience_years")
+  city            String?
+  countryCode     String? @map("country_code")
+
+  /// Denormalised aggregates, recomputed on rating/bug write. Kept on the row
+  /// because the admin tester list sorts and filters on them.
+  ratingAverage          Decimal? @map("rating_average") @db.Decimal(3, 2)
+  ratingCount            Int      @default(0) @map("rating_count")
+  bugsReportedCount      Int      @default(0) @map("bugs_reported_count")
+  bugsAcceptedCount      Int      @default(0) @map("bugs_accepted_count")
+  projectsCompletedCount Int      @default(0) @map("projects_completed_count")
+
+  verifiedAt      DateTime? @map("verified_at")
+  verifiedById    String?   @map("verified_by_id")
+  rejectionReason String?   @map("rejection_reason")
+  ndaAcceptedAt   DateTime? @map("nda_accepted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  devices   TesterDevice[]
+  skills    TesterSkill[]
+  languages TesterLanguage[]
+
+  @@index([status])
+  @@index([countryCode])
+  @@index([ratingAverage])
+  @@map("tester_profiles")
+}
+
+model TesterDevice {
+  id              String     @id @default(cuid())
+  testerProfileId String     @map("tester_profile_id")
+  type            DeviceType
+  manufacturer    String?
+  model           String
+  osName          String?    @map("os_name")
+  osVersion       String?    @map("os_version")
+  screenSize      String?    @map("screen_size")
+  isPrimary       Boolean    @default(false) @map("is_primary")
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  testerProfile TesterProfile @relation(fields: [testerProfileId], references: [id], onDelete: Cascade)
+
+  @@index([testerProfileId])
+  @@index([type])
+  @@map("tester_devices")
+}
+
+model Skill {
+  id      String        @id @default(cuid())
+  name    String        @unique
+  slug    String        @unique
+  testers TesterSkill[]
+
+  @@map("skills")
+}
+
+model TesterSkill {
+  id              String @id @default(cuid())
+  testerProfileId String @map("tester_profile_id")
+  skillId         String @map("skill_id")
+
+  testerProfile TesterProfile @relation(fields: [testerProfileId], references: [id], onDelete: Cascade)
+  skill         Skill         @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([testerProfileId, skillId])
+  @@map("tester_skills")
+}
+
+model TesterLanguage {
+  id              String @id @default(cuid())
+  testerProfileId String @map("tester_profile_id")
+  /// ISO 639-1 code
+  code            String
+  /// CEFR-ish: NATIVE | FLUENT | PROFESSIONAL | BASIC
+  proficiency     String
+
+  testerProfile TesterProfile @relation(fields: [testerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([testerProfileId, code])
+  @@map("tester_languages")
+}
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+/// §2.2 "Project Management", §2.4 Customer submits, §2.3 Tester works on.
+model Project {
+  id             String  @id @default(cuid())
+  legacyId       String? @unique @map("legacy_id")
+  reference      String  @unique // human-facing, e.g. "C4T-2026-0142"
+  organisationId String  @map("organisation_id")
+  createdById    String  @map("created_by_id")
+
+  title        String
+  summary      String?
+  /// Testing instructions and scope shown to assigned Testers (§2.3).
+  instructions String?
+  status       ProjectStatus   @default(DRAFT)
+  priority     ProjectPriority @default(NORMAL)
+
+  platformTargets String[] @map("platform_targets") // ["web","android","ios"]
+  targetCountries String[] @map("target_countries") // ISO alpha-2
+  targetLanguages String[] @map("target_languages") // ISO 639-1
+
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  submittedAt DateTime? @map("submitted_at")
+  approvedAt  DateTime? @map("approved_at")
+  completedAt DateTime? @map("completed_at")
+
+  /// 0-100, maintained by Admin or derived from assignment completion.
+  progressPercent Int @default(0) @map("progress_percent")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  createdBy    User         @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  materials    ProjectMaterial[]
+  assignments  ProjectAssignment[]
+  managers     ManagerAssignment[]
+  bugs         Bug[]
+  threads      Thread[]
+  ratings      Rating[]
+  transactions Transaction[]
+
+  @@index([organisationId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("projects")
+}
+
+/// §2.3 "testing instructions, scope, and materials for each assigned project"
+model ProjectMaterial {
+  id          String   @id @default(cuid())
+  projectId   String   @map("project_id")
+  title       String
+  description String?
+  /// Either an uploaded file or an external URL (e.g. a build link).
+  fileId      String?  @map("file_id")
+  url         String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  file    FileObject? @relation("MaterialFile", fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@map("project_materials")
+}
+
+model ProjectAssignment {
+  id        String           @id @default(cuid())
+  projectId String           @map("project_id")
+  testerId  String           @map("tester_id") // User.id where role = TESTER
+  status    AssignmentStatus @default(INVITED)
+
+  invitedAt   DateTime  @default(now()) @map("invited_at")
+  respondedAt DateTime? @map("responded_at")
+  completedAt DateTime? @map("completed_at")
+  removedAt   DateTime? @map("removed_at")
+  notes       String?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tester  User    @relation(fields: [testerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, testerId])
+  @@index([testerId, status])
+  @@map("project_assignments")
+}
+
+/// §2.2 "Manager Management" — internal managers / Sub-Admins overseeing
+/// projects or tester groups.
+model ManagerAssignment {
+  id         String   @id @default(cuid())
+  managerId  String   @map("manager_id") // User.id where role in (ADMIN, SUB_ADMIN)
+  projectId  String   @map("project_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  manager User    @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([managerId, projectId])
+  @@index([projectId])
+  @@map("manager_assignments")
+}
+
+// ─── Bugs ────────────────────────────────────────────────────────────────────
+
+/// §2.3 — Testers log bugs with description, severity, steps to reproduce and
+/// supporting attachments. §2.4 — Customers view bugs against their projects.
+model Bug {
+  id           String  @id @default(cuid())
+  legacyId     String? @unique @map("legacy_id")
+  reference    String  @unique // e.g. "BUG-2026-00417"
+  projectId    String  @map("project_id")
+  reportedById String  @map("reported_by_id")
+
+  title            String
+  description      String
+  stepsToReproduce String  @map("steps_to_reproduce")
+  expectedResult   String? @map("expected_result")
+  actualResult     String? @map("actual_result")
+
+  severity        BugSeverity
+  status          BugStatus          @default(NEW)
+  reproducibility BugReproducibility @default(ALWAYS)
+
+  // Environment captured at report time
+  deviceModel String? @map("device_model")
+  osName      String? @map("os_name")
+  osVersion   String? @map("os_version")
+  browser     String?
+  appVersion  String? @map("app_version")
+  networkType String? @map("network_type")
+
+  /// Set when status = DUPLICATE.
+  duplicateOfId String? @map("duplicate_of_id")
+
+  triagedAt  DateTime? @map("triaged_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportedBy  User    @relation("BugReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  duplicateOf Bug?    @relation("BugDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates  Bug[]   @relation("BugDuplicates")
+
+  attachments   BugAttachment[]
+  comments      BugComment[]
+  statusHistory BugStatusHistory[]
+
+  @@index([projectId, status])
+  @@index([reportedById])
+  @@index([severity])
+  @@index([createdAt])
+  @@map("bugs")
+}
+
+model BugAttachment {
+  id        String   @id @default(cuid())
+  bugId     String   @map("bug_id")
+  fileId    String   @map("file_id")
+  caption   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  bug  Bug        @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  file FileObject @relation("BugFile", fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([bugId])
+  @@map("bug_attachments")
+}
+
+model BugComment {
+  id         String   @id @default(cuid())
+  bugId      String   @map("bug_id")
+  authorId   String   @map("author_id")
+  body       String
+  /// Internal notes are hidden from Customers and Testers.
+  isInternal Boolean  @default(false) @map("is_internal")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  bug    Bug  @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([bugId])
+  @@map("bug_comments")
+}
+
+model BugStatusHistory {
+  id          String     @id @default(cuid())
+  bugId       String     @map("bug_id")
+  changedById String     @map("changed_by_id")
+  fromStatus  BugStatus? @map("from_status")
+  toStatus    BugStatus  @map("to_status")
+  note        String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  bug       Bug  @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  changedBy User @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([bugId])
+  @@map("bug_status_history")
+}
+
+// ─── Communication ───────────────────────────────────────────────────────────
+
+/// §2.2 "Communication" — threads between Customers, Testers and Admin/Sub-Admin.
+model Thread {
+  id            String     @id @default(cuid())
+  type          ThreadType @default(PROJECT)
+  subject       String?
+  projectId     String?    @map("project_id")
+  createdById   String     @map("created_by_id")
+  isClosed      Boolean    @default(false) @map("is_closed")
+  lastMessageAt DateTime?  @map("last_message_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("ThreadCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  participants ThreadParticipant[]
+  messages     Message[]
+
+  @@index([projectId])
+  @@index([lastMessageAt])
+  @@map("threads")
+}
+
+model ThreadParticipant {
+  id         String    @id @default(cuid())
+  threadId   String    @map("thread_id")
+  userId     String    @map("user_id")
+  lastReadAt DateTime? @map("last_read_at")
+  joinedAt   DateTime  @default(now()) @map("joined_at")
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([userId])
+  @@map("thread_participants")
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  threadId  String    @map("thread_id")
+  senderId  String    @map("sender_id")
+  body      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  thread      Thread              @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender      User                @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  attachments MessageAttachment[]
+
+  @@index([threadId, createdAt])
+  @@map("messages")
+}
+
+model MessageAttachment {
+  id        String @id @default(cuid())
+  messageId String @map("message_id")
+  fileId    String @map("file_id")
+
+  message Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file    FileObject @relation("MessageFile", fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("message_attachments")
+}
+
+/// §2.2 "Communication" — platform-wide announcements.
+model Announcement {
+  id          String               @id @default(cuid())
+  authorId    String               @map("author_id")
+  title       String
+  body        String
+  audience    AnnouncementAudience @default(ALL)
+  publishedAt DateTime?            @map("published_at")
+  expiresAt   DateTime?            @map("expires_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  author User @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+
+  @@index([audience, publishedAt])
+  @@map("announcements")
+}
+
+// ─── Ratings ─────────────────────────────────────────────────────────────────
+
+/// §2.2 "Ratings & Reviews" — ratings given to Testers and/or by Customers.
+model Rating {
+  id            String            @id @default(cuid())
+  legacyId      String?           @unique @map("legacy_id")
+  authorId      String            @map("author_id")
+  subjectType   RatingSubjectType @map("subject_type")
+  /// Set when subjectType is TESTER or CUSTOMER.
+  subjectUserId String?           @map("subject_user_id")
+  projectId     String?           @map("project_id")
+
+  score     Int // 1-5, enforced in application validation
+  comment   String?
+  /// Admin can hide an abusive review without deleting the record.
+  isVisible Boolean @default(true) @map("is_visible")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author      User     @relation("RatingAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  subjectUser User?    @relation("RatingSubjectUser", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  /// One rating per author, per subject, per project.
+  @@unique([authorId, subjectType, subjectUserId, projectId])
+  @@index([subjectUserId])
+  @@index([projectId])
+  @@map("ratings")
+}
+
+// ─── Transactions ────────────────────────────────────────────────────────────
+
+/// §2.2 "Transactions" — payment/billing records for projects, Customers and
+/// Testers. Bookkeeping only: §5 excludes gateway integration from scope.
+model Transaction {
+  id        String            @id @default(cuid())
+  legacyId  String?           @unique @map("legacy_id")
+  reference String            @unique // e.g. "TXN-2026-00318"
+  type      TransactionType
+  status    TransactionStatus @default(PENDING)
+
+  /// Minor units (paise) to avoid float error. 150000 = ₹1,500.00
+  amountMinor BigInt @map("amount_minor")
+  currency    String @default("INR")
+
+  organisationId String? @map("organisation_id")
+  projectId      String? @map("project_id")
+  /// Customer being invoiced, or Tester being paid.
+  counterpartyId String? @map("counterparty_id")
+  recordedById   String  @map("recorded_by_id")
+
+  description String?
+  externalRef String?   @map("external_ref") // bank UTR / invoice no.
+  occurredAt  DateTime  @map("occurred_at")
+  settledAt   DateTime? @map("settled_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organisation Organisation? @relation(fields: [organisationId], references: [id], onDelete: SetNull)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  counterparty User?         @relation("TransactionCounterparty", fields: [counterpartyId], references: [id], onDelete: SetNull)
+  recordedBy   User          @relation("TransactionRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([organisationId])
+  @@index([counterpartyId])
+  @@index([type, status])
+  @@index([occurredAt])
+  @@map("transactions")
+}
+
+// ─── Notifications ───────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  body      String?
+  /// Deep link into the frontend, e.g. "/app/projects/abc123".
+  link      String?
+  /// Loose payload for rendering; not queried on.
+  metadata  Json?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ─── Files ───────────────────────────────────────────────────────────────────
+
+/// Central registry for every uploaded object. Rows are created when a
+/// presigned upload URL is issued and marked complete once the client confirms.
+model FileObject {
+  id           String    @id @default(cuid())
+  scope        FileScope
+  /// Storage key: S3 object key, or relative path under LOCAL_STORAGE_DIR.
+  storageKey   String    @unique @map("storage_key")
+  driver       String    @default("s3") // "s3" | "local"
+  originalName String    @map("original_name")
+  mimeType     String    @map("mime_type")
+  sizeBytes    Int       @map("size_bytes")
+  checksum     String?
+  uploadedById String    @map("uploaded_by_id")
+  /// False until the client confirms the upload finished. Sweep stale rows.
+  isComplete   Boolean   @default(false) @map("is_complete")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  uploadedBy User @relation("FileUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  userAvatars        User[]              @relation("UserAvatar")
+  orgLogos           Organisation[]      @relation("OrgLogo")
+  projectMaterials   ProjectMaterial[]   @relation("MaterialFile")
+  bugAttachments     BugAttachment[]     @relation("BugFile")
+  messageAttachments MessageAttachment[] @relation("MessageFile")
+
+  @@index([uploadedById])
+  @@index([scope])
+  @@index([isComplete, createdAt])
+  @@map("file_objects")
+}
+
+// ─── Audit ───────────────────────────────────────────────────────────────────
+
+/// Write-only trail for admin-sensitive actions. Not user-deletable.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  action     String // "project.status.changed"
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  before     Json?
+  after      Json?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Marketing ───────────────────────────────────────────────────────────────
+
+/// A demo request from the marketing site's contact form.
+///
+/// THE ONLY MODEL WRITTEN BY AN UNAUTHENTICATED REQUEST. Everything else in this
+/// schema is created by a logged-in actor; a lead is created by a stranger. That
+/// shapes the design:
+///
+///   - No relation to User on the way in. The submitter has no account, and
+///     inventing one from an unverified email would let anyone create rows in
+///     the users table.
+///   - Every free-text field is length-capped in the route's Zod schema before
+///     it reaches here.
+///   - `ipAddress` and `userAgent` are kept for abuse triage. They are personal
+///     data under GDPR/DPDPA, so they belong in the retention policy the Trust
+///     page promises — do not treat them as ordinary metadata.
+///   - `status` starts NEW and is only ever moved by an authenticated admin.
+model Lead {
+  id String @id @default(cuid())
+
+  firstName String  @map("first_name")
+  lastName  String  @map("last_name")
+  /// Lower-cased on write so duplicate detection is not case-sensitive.
+  email     String
+  company   String
+  /// Free-text band from the form's select, e.g. "51–500". Not an enum: the
+  /// options are marketing copy and will change without a migration.
+  teamSize  String? @map("team_size")
+  message   String?
+
+  /// Whether they opted in to the benchmark report. Consent evidence, so it is
+  /// stored as given rather than inferred later.
+  marketingConsent Boolean @default(false) @map("marketing_consent")
+
+  status LeadStatus @default(NEW)
+  /// Internal triage notes. Never shown to the submitter.
+  notes  String?
+
+  /// Set when a lead becomes a customer, so the pipeline can be measured.
+  convertedOrgId String? @map("converted_org_id")
+
+  /// Abuse triage only. See the note above about retention.
+  ipAddress  String? @map("ip_address")
+  userAgent  String? @map("user_agent")
+  /// Which page the form was submitted from, once the site sends it.
+  sourcePath String? @map("source_path")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  convertedOrg Organisation? @relation(fields: [convertedOrgId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email])
+  @@index([createdAt])
+  @@map("leads")
+}
