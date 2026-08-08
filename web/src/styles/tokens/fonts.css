@@ -1,0 +1,23 @@
+/* Crowd4Test typefaces.
+   Instrument Sans — display + UI + body. JetBrains Mono — eyebrows, metrics, code.
+
+   ──────────────────────────────────────────────────────────────────────────
+   PORT NOTE — differs from design/_ds/tokens/fonts.css.
+
+   The prototype pulls both families with an @import from the Google Fonts CDN.
+   That is removed here: next/font/google self-hosts the files at build time,
+   which eliminates the render-blocking request, the extra DNS round trip and
+   the layout shift, and keeps the site working with no third-party origin.
+
+   next/font exposes each family as a CSS variable (configured in
+   app/layout.tsx). Those feed the stacks below, so every token and component
+   that reads --font-sans / --font-mono keeps working untouched.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --font-sans: var(--font-instrument-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  --font-display: var(--font-sans);
+}

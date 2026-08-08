@@ -1,0 +1,31 @@
+/* Crowd4Test global stylesheet.
+ *
+ * Import order matters and mirrors design/_ds/styles.css exactly: fonts define
+ * the family variables, colors the ramps and semantic aliases, then the scales,
+ * then base (which consumes all of the above), then interactions (which owns
+ * the hover/focus/breakpoint rules the components reference by class).
+ *
+ * There is no Tailwind. The design system styles itself with inline style
+ * objects that reference these custom properties, plus the .c4t-* classes in
+ * interactions.css for the things inline styles cannot express — :hover,
+ * :focus-visible and media queries. A utility framework on top would be a
+ * second, competing source of truth for the same values.
+ *
+ * The custom section patterns from design/index.html's <style> block
+ * (.c4t-deep, .c4t-airy, .c4t-marquee, .c4t-bento, the stat divider rules,
+ * .c4t-role-row) are NOT here — they ship as co-located CSS Modules next to
+ * the section components that use them.
+ */
+
+@import url('./tokens/fonts.css');
+@import url('./tokens/colors.css');
+@import url('./tokens/typography.css');
+@import url('./tokens/spacing.css');
+@import url('./tokens/radius.css');
+@import url('./tokens/elevation.css');
+@import url('./tokens/motion.css');
+@import url('./tokens/base.css');
+@import url('./tokens/interactions.css');
+
+/* Last, so it can correct the rules above. See the file for what and why. */
+@import url('./overrides.css');

@@ -1,0 +1,45 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI Testing & Crowd Testing Services | Crowd4Test</title>
+<meta name="description" content="Validate AI apps, web, mobile and APIs with AI agents plus a vetted global community of expert testers. Real devices, real users, 120+ countries. Book a demo.">
+<link rel="stylesheet" href="_ds/styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/_ds_bundle.js"></script>
+<script src="site/data.js"></script>
+<script src="site/pagedata.js"></script>
+<script src="site/detaildata.js"></script>
+<style>
+:root{--surface-canvas:var(--ink-50);--surface-raised:var(--ink-50);--surface-sunken:var(--ink-100);--surface-inverse-raised:var(--ink-900);--border-inverse:var(--ink-800);--text-inverse:var(--ink-50);--text-inverse-muted:var(--ink-300);--action-inverse-bg:var(--ink-50);--action-secondary-bg:var(--ink-50);--surface-muted:var(--ink-200)}
+body{background:var(--ink-50)}
+a{color:var(--text-link)}a:hover{color:var(--text-link-hover)}
+.c4t-deep{position:relative;overflow:hidden;background:var(--ink-950)!important;color:var(--text-inverse)}
+.c4t-deep::before{content:"";position:absolute;left:-10%;right:-10%;top:-30%;height:80%;background:radial-gradient(55% 100% at 50% 0%,var(--ink-800),transparent 68%);opacity:.6;pointer-events:none}
+.c4t-deep::after{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--ink-900) 1px,transparent 1px),linear-gradient(90deg,var(--ink-900) 1px,transparent 1px);background-size:72px 72px;opacity:.5;-webkit-mask-image:radial-gradient(80% 70% at 50% 0%,#000,transparent 75%);mask-image:radial-gradient(80% 70% at 50% 0%,#000,transparent 75%);pointer-events:none}
+.c4t-deep>*{position:relative;z-index:1}
+.c4t-edge{border-top:1px solid var(--ink-800)}
+.c4t-edge-light{border-top:1px solid var(--border-default)}
+.c4t-airy{position:relative;overflow:hidden}
+.c4t-airy::before{content:"";position:absolute;left:0;right:0;top:0;height:70%;background:radial-gradient(60% 100% at 78% 0%,var(--ink-200),transparent 70%);opacity:.55;pointer-events:none}
+.c4t-airy>*{position:relative;z-index:1}
+.c4t-marquee{position:relative;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.c4t-marquee-track{display:flex;width:max-content;animation:c4t-scroll 36s linear infinite}
+.c4t-marquee:hover .c4t-marquee-track{animation-play-state:paused}
+.c4t-marquee-set{display:flex;align-items:center;gap:64px;padding-right:64px}
+@keyframes c4t-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.c4t-marquee-track{animation:none}}
+.c4t-stats-5>*{padding-left:32px!important;padding-right:32px!important}
+.c4t-stats-5>*:first-child{padding-left:0!important}
+@media(max-width:1100px){.c4t-stats-5:not(.c4t-stats-3){grid-template-columns:repeat(3,minmax(0,1fr))!important;row-gap:32px}.c4t-stats-5:not(.c4t-stats-3)>*:nth-child(3n+1){border-left:none!important;padding-left:0!important}}
+@media(max-width:640px){.c4t-stats-5{grid-template-columns:repeat(2,minmax(0,1fr))!important;row-gap:32px}.c4t-stats-5>*:nth-child(3n+1){border-left:1px solid var(--border-default)!important;padding-left:32px!important}.c4t-stats-5>*:nth-child(2n+1){border-left:none!important;padding-left:0!important}}
+@media(max-width:800px){.c4t-role-row{grid-template-columns:1fr!important;gap:8px!important}}
+@media(max-width:900px){.c4t-bento{grid-template-columns:1fr!important}.c4t-bento>*{grid-column:auto!important;grid-row:auto!important}.c4t-step-row{grid-template-columns:1fr!important;gap:28px!important}.c4t-step-row>div{order:unset!important}}
+@media(max-width:1100px){.c4t-split-sticky{grid-template-columns:1fr!important;gap:40px!important}.c4t-split-sticky>div:first-child{position:static!important}}
+</style>
+</head><body>
+<div id="root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="site/Home.jsx"></script>
+<script type="text/babel" src="site/pages.jsx"></script>
+<script type="text/babel" src="site/detail.jsx"></script>
+<script type="text/babel" src="site/App.jsx"></script>
+</body></html>

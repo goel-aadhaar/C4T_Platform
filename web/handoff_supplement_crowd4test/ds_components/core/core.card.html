@@ -1,0 +1,22 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Core" subtitle="Buttons, icon buttons, badges, tags, wordmark" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{padding:24px}.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:18px}.lbl{font:600 11px/1 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px}.dark{background:var(--surface-inverse);padding:16px;border-radius:var(--radius-card)}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { Button, IconButton, Badge, Tag, Logo } = window.Crowd4TestDesignSystem_772017;
+function Card(){return (<div>
+<div class="lbl">Buttons</div>
+<div className="row"><Button variant="primary" iconRight="arrow-right">Book a demo</Button><Button variant="secondary">See the platform</Button><Button variant="ghost" iconLeft="play">Watch</Button><Button variant="link">Read the report</Button><Button variant="primary" disabled>Disabled</Button></div>
+<div className="row"><Button size="sm">Small</Button><Button size="md">Medium</Button><Button size="lg">Large</Button></div>
+<div className="row dark"><Button variant="inverse">Talk to sales</Button><Button variant="inverse-ghost" iconRight="arrow-up-right">Careers</Button></div>
+<div className="lbl">Icon buttons · Badges · Tags</div>
+<div className="row"><IconButton icon="menu" label="Menu"/><IconButton icon="search" label="Search" variant="outline"/><IconButton icon="arrow-right" label="Next" variant="filled" size="lg"/>
+<Badge tone="brand">New</Badge><Badge tone="success" dot>Passed</Badge><Badge tone="warning" dot>Flaky</Badge><Badge tone="error" dot>Failed</Badge><Badge tone="accent" icon="bot">AI agent</Badge>
+<Tag active>All</Tag><Tag onClick={()=>{}}>AI testing</Tag><Tag onClick={()=>{}}>Accessibility</Tag><Logo size={22}/></div>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Card/>);
+</script></body></html>

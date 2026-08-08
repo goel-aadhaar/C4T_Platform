@@ -1,0 +1,168 @@
+/* Corrections to the design-system stylesheets.
+ *
+ * `styles/tokens/*.css` is held byte-identical to the handoff so it can be
+ * re-copied when the kit is updated. Where a rule in there is wrong, the fix
+ * goes here instead of being edited in place, and every entry states what is
+ * broken and how it was observed. Imported last from globals.css so these rules
+ * come after the ones they correct.
+ *
+ * Report these upstream. Each is a bug in the kit, not in this site.
+ */
+
+/* ── .c4t-grid-4 never reaches one column ────────────────────────────────────
+ *
+ * interactions.css declares, in this order:
+ *
+ *   line 41:  @media (max-width: 700px)  { .c4t-grid-3, .c4t-grid-2, .c4t-grid-4 { 1fr !important } }
+ *   line 42:  @media (max-width: 1000px) { .c4t-grid-4 { repeat(2, …) !important } }
+ *
+ * Below 700px both queries match. Same selector specificity, both !important,
+ * so the LATER declaration wins — and the later one is the two-column rule. The
+ * four-across grids therefore stay 2-up on every phone.
+ *
+ * Observed at a 360px viewport: the AI services cards came out 144px wide with
+ * 32px padding on each side, leaving 80px of content. The "New" badge on the AI
+ * Agent Testing card overflowed the card and pushed the whole document 7px wide,
+ * giving the page a horizontal scrollbar.
+ *
+ * `.c4t-grid-3` is unaffected — its two rules happen to be in the right order.
+ */
+@media (max-width: 700px) {
+  .c4t-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Additions, not corrections ──────────────────────────────────────────────
+ *
+ * The rules below are not fixing a bug in the kit; they carry state that inline
+ * styles cannot express, for components rewritten during the port. Same file
+ * because the mechanism is identical — a global sheet loaded after the tokens.
+ */
+
+/* Checkbox tick visibility.
+ *
+ * The kit's Checkbox rendered its tick conditionally in JavaScript, which made
+ * it controlled-only and left it blank with JS unavailable. The tick is now
+ * always in the DOM and revealed here, so the control is uncontrolled, works in
+ * a plain form POST, and needs no client component. See components/ds/forms/
+ * Checkbox.tsx for the full note.
+ */
+.c4t-checkbox input[type='checkbox'] {
+  background: var(--surface-canvas);
+  border-color: var(--border-strong);
+}
+
+.c4t-checkbox input[type='checkbox'] + svg {
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+}
+
+.c4t-checkbox input[type='checkbox']:checked {
+  background: var(--ink-950);
+  border-color: var(--ink-950);
+}
+
+.c4t-checkbox input[type='checkbox']:checked + svg {
+  opacity: 1;
+}
+
+/* Inverse checkbox, for the dark bands.
+ *
+ * The fills invert: an unchecked box is the raised dark surface with an inverse
+ * hairline, and a CHECKED box is ink-50 so it reads against ink-950 — the
+ * default's ink-950 fill would be the same colour as the band it sits on. The
+ * tick colour flips in the component, since it is not a state selector.
+ */
+.c4t-checkbox--inverse input[type='checkbox'] {
+  background: var(--surface-inverse-raised);
+  border-color: var(--border-inverse);
+}
+
+.c4t-checkbox--inverse input[type='checkbox']:checked {
+  background: var(--ink-50);
+  border-color: var(--ink-50);
+}
+
+/* ── `--text-muted` fails WCAG 1.4.3 on every surface it is used on ──────────
+ *
+ * colors.css maps `--text-muted` to `--ink-500` (#7a716a). Measured against the
+ * two light surfaces it appears on:
+ *
+ *   on --surface-sunken (--ink-100 #f1ede8)  4.09 : 1
+ *   on --surface-canvas (--ink-50  #faf8f5)  4.48 : 1
+ *
+ * WCAG 1.4.3 requires 4.5:1 for normal-size text. Both fail, and the canvas one
+ * fails by 0.02 — close enough to look fine and still be non-conformant. axe
+ * flagged three instances (the Media plate label, the carousel counter, the
+ * pricing note) because those are the ones at 11–13px in a measurable position;
+ * the alias is used in 30 places and every small-text one is affected.
+ *
+ * `--ink-600` (#625950) measures 5.87:1 on sunken and 6.44:1 on canvas. It is one
+ * ramp step darker — the role stays "muted", it just becomes legible.
+ *
+ * FIXED HERE RATHER THAN IN colors.css because that file is held byte-identical
+ * to the handoff so the kit can be re-copied. This is a semantic alias, not a
+ * ramp value, so overriding it changes no colour definition.
+ *
+ * Dark surfaces are unaffected: they use `--text-inverse-muted`, a separate
+ * alias, in all 28 of their usages.
+ *
+ * ⚠ REPORT UPSTREAM. A design system sold to a company whose own site offers
+ * WCAG 2.2 AA testing should not ship a text alias that fails at 4.48:1.
+ */
+:root {
+  --text-muted: var(--ink-600);
+}
+
+/* ── Focus is visible on EVERY interactive element ───────────────────────────
+ *
+ * CLAUDE.md rule 8: "2px solid ink outline at 2px offset on every interactive
+ * element, inverted to white on dark surfaces." interactions.css implements that
+ * for exactly one selector — `.c4t-btn` — and leaves every other control on the
+ * browser default. Measured: focusing 25 controls on /ai-testing, the icon button
+ * was the one with no ring at all.
+ *
+ * The browser default is not nothing, but it is not the spec either: it varies by
+ * engine, it disappears against the ink-950 bands, and "every interactive element"
+ * is a requirement this site has to meet more than most — it is sold by a company
+ * whose own service list includes WCAG 2.2 AA testing.
+ *
+ * So the ring is applied to every interactive class the kit defines, plus the bare
+ * elements. `:focus-visible`, not `:focus`, so a mouse click does not draw it.
+ *
+ * ⚠ ALSO FIXES A RULE 2 VIOLATION. interactions.css inverts the ring with
+ * `var(--white)` (#ffffff), and rule 2 bars pure white from composition. The
+ * inverse ring below uses `--ink-50`, the page floor, and is declared after the
+ * kit's rule so it wins.
+ */
+.c4t-iconbtn:focus-visible,
+.c4t-input:focus-visible,
+.c4t-tab:focus-visible,
+.c4t-faq-trigger:focus-visible,
+.c4t-navlink:focus-visible,
+.c4t-megalink:focus-visible,
+.c4t-footerlink:focus-visible,
+.c4t-inverse-link:focus-visible,
+.c4t-card-hover:focus-visible,
+.c4t-page-btn:focus-visible,
+.c4t-checkbox input[type='checkbox']:focus-visible,
+[role='tab']:focus-visible,
+[role='tablist']:focus-visible,
+[role='group'][aria-roledescription='carousel']:focus-visible,
+main a:focus-visible,
+main button:focus-visible,
+main select:focus-visible,
+main textarea:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* On the dark bands the ink ring is invisible, so it flips to the page floor.
+ * `--ink-50`, never `#fff` — rule 2. */
+.c4t-btn--inverse:focus-visible,
+.c4t-btn--inverse-ghost:focus-visible,
+.c4t-inverse-link:focus-visible,
+.c4t-checkbox--inverse input[type='checkbox']:focus-visible {
+  outline-color: var(--ink-50);
+}

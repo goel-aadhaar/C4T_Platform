@@ -1,0 +1,42 @@
+# Normalise line endings.
+#
+# This matters here: development is on Windows, deployment is Linux on EC2.
+# Without this, CRLF creeps into the repository and shell scripts fail on the
+# server with an unhelpful "bad interpreter" error.
+* text=auto eol=lf
+
+# Files that must keep LF whatever the platform.
+*.sh          text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.js          text eol=lf
+*.mjs         text eol=lf
+*.cjs         text eol=lf
+*.json        text eol=lf
+*.prisma      text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.md          text eol=lf
+*.sql         text eol=lf
+Dockerfile    text eol=lf
+
+# Windows-only files keep CRLF.
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+
+# Binary — never diff or convert.
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.webp        binary
+*.ico         binary
+*.pdf         binary
+*.zip         binary
+*.woff        binary
+*.woff2       binary
+*.docx        binary
+
+# Keep generated noise out of diffs and language stats.
+package-lock.json  linguist-generated=true -diff

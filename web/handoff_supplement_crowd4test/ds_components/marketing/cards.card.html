@@ -1,0 +1,21 @@
+<!-- @dsCard group="Components" viewport="1200x520" name="Marketing cards" subtitle="Feature, service, industry, resource and case-study cards" -->
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{padding:24px;background:var(--surface-sunken)}.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;align-items:stretch}</style>
+</head><body><div id="root"></div>
+<script type="text/babel">
+const { FeatureCard, ServiceCard, IndustryCard, ResourceCard, CaseStudyCard } = window.Crowd4TestDesignSystem_772017;
+function Card(){return (<div>
+ <div className="g4">
+  <FeatureCard icon="bot" title="AI test agents" description="Autonomous exploration across every build, not just the happy path." meta="9,412 runs / week"/>
+  <ServiceCard icon="users-round" eyebrow="Engagement" title="Managed QE pods" description="A dedicated team embedded in your sprints." points={["Named QE lead","Sprint-embedded","Evidence in Jira"]}/>
+  <IndustryCard icon="landmark" name="Financial services" description="Audit-ready evidence on every release." stat="−63%" statLabel="Production defects, year one"/>
+  <ResourceCard type="Guide" title="How to evaluate an LLM agent before it ships" description="A rubric your QA team can run this sprint." readTime="9 min read" author="Priya Raman"/>
+ </div>
+ <CaseStudyCard featured client="Nordbank" industry="Financial services" headline="Cutting release regression from nine days to fourteen hours" results={[{value:"−94%",label:"Regression cycle time"},{value:"4.2×",label:"Coverage per sprint"},{value:"11 min",label:"Median first finding"}]}/>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<Card/>);
+</script></body></html>

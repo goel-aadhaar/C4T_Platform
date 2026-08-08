@@ -1,0 +1,335 @@
+/* Page-level section patterns, ported from the <style> block in
+ * design/index.html.
+ *
+ * These are NOT design-system components — they are compositional treatments
+ * the page applies to a Section: the dark band with its glow and grid, the warm
+ * light wash, the marquee, the bento grid. globals.css says they ship as a
+ * co-located CSS Module rather than going into tokens/, both because the token
+ * files are held byte-identical to the handoff and because these belong to the
+ * page compositions, not the kit.
+ *
+ * Everything here that is a colour references a token. The percentages,
+ * gradient stops and keyframes are geometry, not design values.
+ */
+
+/* ─── The dark band ─────────────────────────────────────────────────────────
+ * Three layers: an ink-950 floor, a radial glow bleeding down from the top
+ * edge, and a faint 72px grid masked so it fades out before the fold. `> *`
+ * lifts the real content above both pseudo-elements.
+ *
+ * The !important on the background is the source's. It is load-bearing: Section
+ * sets its own background from `tone`, inline, and an inline style outranks any
+ * class. Removing it silently reverts the band to plain --surface-inverse.
+ */
+.deep {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink-950) !important;
+  color: var(--text-inverse);
+}
+
+.deep::before {
+  content: '';
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: -30%;
+  height: 80%;
+  background: radial-gradient(55% 100% at 50% 0%, var(--ink-800), transparent 68%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.deep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--ink-900) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ink-900) 1px, transparent 1px);
+  background-size: 72px 72px;
+  opacity: 0.5;
+  -webkit-mask-image: radial-gradient(80% 70% at 50% 0%, #000, transparent 75%);
+  mask-image: radial-gradient(80% 70% at 50% 0%, #000, transparent 75%);
+  pointer-events: none;
+}
+
+.deep > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hairline between two consecutive dark bands, where the tone change alone
+ * would not read as a boundary. */
+.edge {
+  border-top: 1px solid var(--ink-800);
+}
+
+.edgeLight {
+  border-top: 1px solid var(--border-default);
+}
+
+/* ─── The light wash ────────────────────────────────────────────────────────
+ * The light-band counterpart to .deep: an off-centre ink-200 bloom in the top
+ * right. Used on the stat band and the industries grid to stop two adjacent
+ * light sections reading as one flat run.
+ */
+.airy {
+  position: relative;
+  overflow: hidden;
+}
+
+.airy::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 70%;
+  background: radial-gradient(60% 100% at 78% 0%, var(--ink-200), transparent 70%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.airy > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Marquee ───────────────────────────────────────────────────────────────
+ * Two identical sets translate -50% in a loop, so the seam lands exactly where
+ * the first set ends. The mask feathers both edges instead of clipping words
+ * mid-letter. Pauses on hover, and `prefers-reduced-motion` stops it entirely —
+ * an endlessly moving element is a vestibular trigger, not decoration.
+ */
+.marquee {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+.marqueeTrack {
+  display: flex;
+  width: max-content;
+  animation: c4t-scroll 36s linear infinite;
+}
+
+.marquee:hover .marqueeTrack {
+  animation-play-state: paused;
+}
+
+.marqueeSet {
+  display: flex;
+  align-items: center;
+  gap: 64px;
+  padding-right: 64px;
+}
+
+@keyframes c4t-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marqueeTrack {
+    animation: none;
+  }
+}
+
+/* ─── Five-across stat band ─────────────────────────────────────────────────
+ * See the note in StatBlock: every cell gets symmetric 32px horizontal padding
+ * and the first cell loses its left padding, which is what puts each divider
+ * optically midway between two figures.
+ *
+ * The reflow drops 5 → 3 → 2. At 640px the :nth-child rules have to be reset in
+ * order — the 3n+1 rule from the 3-up layout is still matched at 2-up and would
+ * strip the border from the wrong cells.
+ */
+.stats5 > * {
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+}
+
+.stats5 > *:first-child {
+  padding-left: 0 !important;
+}
+
+@media (max-width: 1100px) {
+  .stats5:not(.stats3) {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    row-gap: 32px;
+  }
+
+  .stats5:not(.stats3) > *:nth-child(3n + 1) {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}
+
+/* ⚠ THE DOUBLED CLASS IS NOT A TYPO — it is a specificity fix for a real bug in
+ * the source CSS, which wrote these three selectors as plain `.c4t-stats-5`.
+ *
+ * `.c4t-stats-5:not(.c4t-stats-3)` above is (0,2,0); a bare `.c4t-stats-5` is
+ * (0,1,0). !important does not break that tie — specificity is compared first —
+ * so the 1100px rule kept winning below 640px and the band stayed THREE columns
+ * while the `2n + 1` reset stripped borders on the assumption of two. The result
+ * on a phone was a 3-up grid with a single divider in it. Verified in the
+ * prototype and in this port before the fix.
+ *
+ * `.stats5.stats5` matches the same element at (0,2,0) — a tie the later rule
+ * wins — without changing which elements are selected. The child selectors go to
+ * (0,3,0), tying with the 1100px `:not()` versions for the same reason. Anything
+ * carrying `stats3` still lands on two columns here, which is what the source
+ * intended for both variants.
+ */
+@media (max-width: 640px) {
+  .stats5.stats5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    row-gap: 32px;
+  }
+
+  .stats5.stats5 > *:nth-child(3n + 1) {
+    border-left: 1px solid var(--border-default) !important;
+    padding-left: 32px !important;
+  }
+
+  .stats5.stats5 > *:nth-child(2n + 1) {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+}
+
+/* Three-across variant, used on detail pages. Only exists to opt out of the
+ * 1100px rule above. */
+.stats3 {
+  composes: stats5;
+}
+
+/* ─── Responsive collapses ──────────────────────────────────────────────────
+ * The bento loses its explicit placement and stacks; the alternating step rows
+ * lose their `order` flip so image always precedes copy; the sticky split
+ * un-sticks.
+ */
+/* The alternating image/copy row. Shared by the homepage's "approach" section
+ * and all 33 detail pages, so the base grid lives here rather than being written
+ * inline at both call sites. Only the per-row `order` flip is set inline, since
+ * it depends on the row index. */
+.stepRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .bento {
+    grid-template-columns: 1fr !important;
+  }
+
+  .bento > * {
+    grid-column: auto !important;
+    grid-row: auto !important;
+  }
+
+  .stepRow {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  /* Image before copy on every row once stacked — the flip only makes sense
+     side by side, and left-to-right reading order should not alternate. */
+  .stepRow > div {
+    order: unset !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .splitSticky {
+    grid-template-columns: 1fr !important;
+    gap: 40px !important;
+  }
+
+  .splitSticky > div:first-child {
+    position: static !important;
+  }
+}
+
+/* ─── Numbered rows ─────────────────────────────────────────────────────────
+ * The three-column table used for the AI method, the platform pipeline and the
+ * Contact page's call agenda: mono label, heading, body.
+ *
+ * TWO BUGS FIXED HERE, BOTH INHERITED.
+ *
+ * 1. The prototype put `c4t-numrow` on these rows and never wrote a rule for it —
+ *    the class is in `pages.jsx` and in no stylesheet. So the grid stayed
+ *    `160px 260px 1fr` at every width: 420px of fixed columns plus 64px of gaps,
+ *    inside a 312px container on a phone.
+ *
+ * 2. THE BREAKPOINTS ARE CONTAINER QUERIES, NOT MEDIA QUERIES, and that is the
+ *    load-bearing part. The same component is used full-width on the hub pages
+ *    AND in one half of a two-column split on Contact. At a 1440px viewport that
+ *    half is ~568px, so the fixed columns plus gaps leave about 84px for the body
+ *    — the agenda rendered one word per line while every media query said
+ *    "desktop". A media query cannot see that; a container query can.
+ *
+ * Two steps, because the middle column is the first to stop earning its width: at
+ * 900px the label moves above and heading/body split the row; below 700px
+ * everything stacks.
+ */
+.numRows {
+  container-type: inline-size;
+}
+
+.numRow {
+  display: grid;
+  grid-template-columns: 160px 260px 1fr;
+  gap: 32px;
+  padding: 28px 0;
+  align-items: start;
+}
+
+@container (max-width: 900px) {
+  .numRow {
+    grid-template-columns: 1fr 2fr;
+    gap: 8px 32px;
+  }
+
+  /* The label spans both columns and sits above, keeping its mono alignment
+     with the row's left edge instead of shrinking to a 60px sliver. */
+  .numRow > :first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 4px;
+  }
+}
+
+@container (max-width: 700px) {
+  .numRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* ─── Open-role row ─────────────────────────────────────────────────────────
+ * The Careers table: title, function, location · type, arrow. Transcribed from
+ * index.html, which did define this one.
+ */
+.roleRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 0;
+  text-decoration: none;
+}
+
+@media (max-width: 800px) {
+  .roleRow {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+}

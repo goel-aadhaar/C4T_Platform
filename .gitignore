@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Environment — never commit. JWT_PRIVATE_KEY and the Neon credentials live here.
+# Ignore every .env variant, then re-admit the committed templates.
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Keys and certificates
+*.pem
+*.key
+!**/*.d.ts
+
+# Runtime artefacts
+.uploads/
+*.log
+logs/
+pids/
+*.pid
+
+# Test and coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Caches
+.eslintcache
+.cache/
+.turbo/
+.parcel-cache/
+.vitest/
+
+# Editors
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tooling scratch
+.playwright-mcp/
+
+api/
+
+Crowd4Test_Service_Agreement (1).docx
+
+.vscode/
+
+CLAUDE.md
+
+content.md
+home-viewport.png
+
+.github/

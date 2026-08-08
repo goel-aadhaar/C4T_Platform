@@ -1,0 +1,253 @@
+'use client'
+
+import { useActionState } from 'react'
+import { useFormStatus } from 'react-dom'
+import { Button } from '../core/Button'
+import { Icon } from '../core/Icon'
+import { Checkbox } from '../forms/Checkbox'
+import { Field } from '../forms/Field'
+import { Input } from '../forms/Input'
+import { Select } from '../forms/Select'
+import { Textarea } from '../forms/Textarea'
+import type { LeadState } from '@/app/(marketing)/contact/actions'
+
+export interface ContactFormProps {
+  /** The server action. Passed in so this component stays route-agnostic. */
+  action: (prev: LeadState, formData: FormData) => Promise<LeadState>
+  title?: string
+  description?: string
+  submitLabel?: string
+  consentLabel: string
+  footnote: string
+  teamSizes: readonly string[]
+  success: { title: string; body: string }
+}
+
+/**
+ * The demo-request form. One of the five components CLAUDE.md rule 7 allows to
+ * be a client component.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * PORT NOTES — THE SOURCE FORM DID NOT SUBMIT ANYTHING.
+ *
+ * The kit's ContactForm called `preventDefault`, set `sent = true` and showed a
+ * thank-you. It was a design artefact, correctly so for a prototype. Four things
+ * changed in making it real:
+ *
+ *  1. It posts to a server action, so it works with JavaScript disabled and
+ *     validation cannot be bypassed from devtools. `useActionState` gives the
+ *     progressive-enhancement path for free.
+ *  2. The success panel renders from the action's return value, not from local
+ *     state, so it only appears when the server actually accepted the lead.
+ *  3. Server-side field errors are rendered against their inputs. The prototype
+ *     had no error path at all.
+ *  4. A honeypot field is included. See the action for why it is not a CAPTCHA.
+ *
+ * The submit button is disabled while pending via `useFormStatus`, which needs
+ * to read the enclosing form — hence the small `Submit` component below rather
+ * than reading `pending` from `useActionState` in the parent. Both work; this one
+ * keeps the button's own state local to the button.
+ * ──────────────────────────────────────────────────────────────────────────
+ */
+export function ContactForm({
+  action,
+  title,
+  description,
+  submitLabel = 'Request my demo',
+  consentLabel,
+  footnote,
+  teamSizes,
+  success,
+}: ContactFormProps) {
+  const [state, formAction] = useActionState<LeadState, FormData>(action, { status: 'idle' })
+
+  if (state.status === 'success') {
+    return (
+      <div
+        // Announced without stealing focus, so a screen-reader user hears the
+        // confirmation where they are rather than being thrown to the top.
+        role="status"
+        aria-live="polite"
+        style={{
+          padding: 40,
+          background: 'var(--surface-canvas)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-panel)',
+          textAlign: 'center',
+        }}
+      >
+        <Icon
+          name="check-circle-2"
+          size={40}
+          style={{ color: 'var(--accent-base)', margin: '0 auto 16px' }}
+        />
+        <h3
+          style={{
+            fontSize: 'var(--type-heading-md-size)',
+            letterSpacing: 'var(--type-heading-md-tracking)',
+          }}
+        >
+          {success.title}
+        </h3>
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: 'var(--type-body-sm-size)',
+            lineHeight: 'var(--type-body-sm-line)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          {success.body}
+        </p>
+      </div>
+    )
+  }
+
+  const err = state.errors ?? {}
+
+  return (
+    <form
+      action={formAction}
+      noValidate
+      style={{
+        padding: 32,
+        background: 'var(--surface-canvas)',
+        border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-panel)',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+      }}
+    >
+      {title ? (
+        <h3
+          style={{
+            fontSize: 'var(--type-heading-md-size)',
+            letterSpacing: 'var(--type-heading-md-tracking)',
+          }}
+        >
+          {title}
+        </h3>
+      ) : null}
+
+      {description ? (
+        <p
+          style={{
+            fontSize: 'var(--type-body-sm-size)',
+            lineHeight: 'var(--type-body-sm-line)',
+            color: 'var(--text-secondary)',
+            marginTop: -8,
+          }}
+        >
+          {description}
+        </p>
+      ) : null}
+
+      {state.status === 'error' && state.message ? (
+        <p
+          role="alert"
+          style={{
+            margin: 0,
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--status-error-bg)',
+            color: 'var(--status-error-fg)',
+            fontSize: 'var(--type-body-sm-size)',
+          }}
+        >
+          {state.message}
+        </p>
+      ) : null}
+
+      <div
+        className="c4t-form-row"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}
+      >
+        <Field label="First name" required htmlFor="fn" error={err.firstName}>
+          <Input id="fn" name="firstName" required invalid={Boolean(err.firstName)} />
+        </Field>
+        <Field label="Last name" required htmlFor="ln" error={err.lastName}>
+          <Input id="ln" name="lastName" required invalid={Boolean(err.lastName)} />
+        </Field>
+      </div>
+
+      <Field label="Work email" required htmlFor="we" error={err.email}>
+        <Input
+          id="we"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@company.com"
+          required
+          invalid={Boolean(err.email)}
+        />
+      </Field>
+
+      <div
+        className="c4t-form-row"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}
+      >
+        <Field label="Company" required htmlFor="co" error={err.company}>
+          <Input
+            id="co"
+            name="company"
+            autoComplete="organization"
+            required
+            invalid={Boolean(err.company)}
+          />
+        </Field>
+        <Field label="Team size" htmlFor="ts">
+          <Select id="ts" name="size" placeholder="Select" options={teamSizes} />
+        </Field>
+      </div>
+
+      <Field
+        label="What do you need tested?"
+        htmlFor="msg"
+        hint="A sentence is plenty — we'll take it from there."
+        error={err.message}
+      >
+        <Textarea id="msg" name="message" rows={4} invalid={Boolean(err.message)} />
+      </Field>
+
+      <Checkbox name="consent" label={consentLabel} />
+
+      {/* Bot trap. Hidden from sight AND from assistive technology, and excluded
+          from tab order — a real user can neither see nor reach it, so anything
+          that fills it in is automated. `display: none` would be simpler but
+          some bots skip hidden inputs; this stays in the layout at zero size. */}
+      <div aria-hidden="true" className="c4t-visually-hidden">
+        <label htmlFor="hp">Leave this field empty</label>
+        <input id="hp" name="honeypot" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
+      <Submit label={submitLabel} />
+
+      <p
+        style={{
+          fontSize: 'var(--type-caption-size)',
+          color: 'var(--text-muted)',
+          textAlign: 'center',
+        }}
+      >
+        {footnote}
+      </p>
+    </form>
+  )
+}
+
+/**
+ * Split out so `useFormStatus` can read the enclosing form. It only reports
+ * pending state for a form above it in the tree, so this cannot live in the
+ * parent.
+ */
+function Submit({ label }: { label: string }) {
+  const { pending } = useFormStatus()
+
+  return (
+    <Button type="submit" size="lg" fullWidth disabled={pending}>
+      {pending ? 'Sending…' : label}
+    </Button>
+  )
+}
