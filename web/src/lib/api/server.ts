@@ -1,8 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { env } from '@/lib/env'
-import { ApiError } from './client'
-import type { ApiFailure, ApiSuccess } from './types'
+import { ApiError, type ApiFailure, type ApiSuccess } from './types'
 
 /**
  * Server-side API access for Server Components, Route Handlers and Server

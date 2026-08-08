@@ -24,6 +24,10 @@ import type { ResourceType } from '@/components/ds'
  * flipped, the post gets a route, an index card and a sitemap entry with no other
  * change. See `publishedPosts()` and `visiblePosts()` below for the split.
  *
+ * content.md §12.2 also lists a twelve-post launch calendar. That is an editorial
+ * plan, not site content, so it is not held here — it belongs in whatever tracks
+ * the work.
+ *
  * WHY TYPED OBJECTS AND NOT MDX. The handoff README allows either, and says MDX
  * only "if long-form authoring matters". Adding an MDX toolchain before a single
  * paragraph exists is infrastructure for a use case nobody has exercised. `body`
@@ -57,7 +61,7 @@ export interface BlogPost {
  * blog entries. Titles and excerpts are transcribed from content.md §4.15 — they
  * are the only resource copy in the handoff that has both.
  */
-export const BLOG_POSTS: readonly BlogPost[] = [
+const BLOG_POSTS: readonly BlogPost[] = [
   {
     slug: 'ultimate-guide-to-testing-ai-applications',
     title: 'The Ultimate Guide to Testing AI Applications',
@@ -86,33 +90,6 @@ export const BLOG_POSTS: readonly BlogPost[] = [
     excerpt: 'An honest cost model, including the parts vendors leave out.',
     status: 'draft',
   },
-]
-
-/**
- * The launch calendar from content.md §12.2, kept as data and deliberately NOT
- * rendered anywhere.
- *
- * It is an editorial plan, not site content — publishing a list of posts that do
- * not exist tells a visitor the blog is empty and tells a competitor the roadmap.
- * Move a title into `BLOG_POSTS` with a body when it is written.
- *
- * ⚠ Item 2 contains a live `{{X}}` placeholder: the number of production chatbots
- * red-teamed. That figure has to come from delivery records before the post can
- * carry it.
- */
-export const PLANNED_POSTS: readonly string[] = [
-  'Why your LLM eval suite is passing while your users complain',
-  'What we found red-teaming {{X}} production chatbots',
-  'AI agent testing: the failure modes nobody plans for',
-  'RAG is retrieval plus generation — test them separately',
-  'The device matrix you should actually be testing on',
-  "Accessibility overlays don't work. Here's what does.",
-  'What a good bug report contains (and why most don’t)',
-  'Risk-based regression: what to skip and how to defend the decision',
-  'Testing payments in India: UPI edge cases that break checkout',
-  'How to run a QA pilot that actually tells you something',
-  'Localization QA: eight bugs that only appear in-market',
-  'Building an AI evaluation rubric your team will agree on',
 ]
 
 /* ─── Page copy ────────────────────────────────────────────────────────────── */

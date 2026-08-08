@@ -606,6 +606,13 @@ export const NOT_FOUND_PAGE = {
 
 export const ERROR_PAGE = {
   title: 'Something broke on our side.',
+  description:
+    'Not your fault. Our team has been notified and is on it. Try again in a moment, or email',
+  email: 'admin@crowd4test.com',
+  emailSuffix: "if it's urgent.",
+  cta: 'Try again',
+  /** Prefix for the server-side correlation id, shown only when one exists. */
+  referenceLabel: 'Reference:',
 } as const
 
 /* ─── Cookie consent ───────────────────────────────────────────────────────── */

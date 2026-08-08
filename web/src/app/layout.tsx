@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Instrument_Sans, JetBrains_Mono } from 'next/font/google'
 import { env } from '@/lib/env'
+import { SITE_NAME, TITLE_SUFFIX } from '@/lib/seo/metadata'
 import { BRAND_COLORS } from '@/styles/brand'
 import '@/styles/globals.css'
 
@@ -27,12 +28,15 @@ const jetBrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_SITE_URL),
   title: {
-    default: 'AI Testing & Crowd Testing Services | Crowd4Test',
-    template: '%s | Crowd4Test',
+    // Built from TITLE_SUFFIX rather than repeating the literal. `fromRoute`
+    // deliberately omits the suffix because this template appends it; the two
+    // must agree, so they read from one constant.
+    default: `AI Testing & Crowd Testing Services${TITLE_SUFFIX}`,
+    template: `%s${TITLE_SUFFIX}`,
   },
   description:
     'Validate AI apps, web, mobile and APIs with AI agents plus a vetted global community of expert testers. Real devices, real users, 120+ countries. Book a demo.',
-  applicationName: 'Crowd4Test',
+  applicationName: SITE_NAME,
   formatDetection: { telephone: false, address: false, email: false },
   // Preview and staging deployments must never be indexed.
   robots:

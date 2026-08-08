@@ -78,3 +78,38 @@ export const ROLE_HOME: Readonly<Record<Role, string>> = {
   TESTER: '/app/tester',
   USER: '/app/onboarding',
 }
+
+/**
+ * A failed API response, as an Error.
+ *
+ * Lives here rather than beside a fetch wrapper because both the server helper
+ * and any future browser client need it, and it depends only on `ApiFailure`
+ * below. It previously sat in `api/client.ts`, which was otherwise an unused
+ * browser fetch layer — the class was the only live thing in a 163-line file.
+ */
+export class ApiError extends Error {
+  readonly status: number
+  readonly code: string
+  readonly details?: unknown
+  readonly requestId?: string
+
+  constructor(status: number, body: Partial<ApiFailure>) {
+    super(body.error?.message ?? `Request failed with status ${status}`)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = body.error?.code ?? 'UNKNOWN'
+    this.details = body.error?.details
+    this.requestId = body.requestId
+  }
+
+  /** True when refreshing the session could plausibly fix this. */
+  get isRetryableAuthFailure(): boolean {
+    // Only an expired access token is worth retrying. A revoked, expired or
+    // reused session will fail again — see the 401 table in api/docs/API.md.
+    return this.status === 401 && this.code === 'UNAUTHORIZED'
+  }
+
+  get isValidationError(): boolean {
+    return this.status === 422
+  }
+}

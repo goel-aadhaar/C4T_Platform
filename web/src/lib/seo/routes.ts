@@ -444,10 +444,6 @@ export function requireRoute(path: string): RouteDef {
   return route
 }
 
-export function routesInGroup(group: RouteGroup): RouteDef[] {
-  return ROUTES.filter((r) => r.group === group)
-}
-
 /**
  * Child slugs of a templated family, e.g. slugsUnder('/services') → the 15
  * service pages. Used by `generateStaticParams`; the hub itself is excluded.

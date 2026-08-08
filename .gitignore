@@ -8,6 +8,9 @@ dist/
 build/
 .next/
 out/
+# Incremental TypeScript cache. Machine-specific, changes on every build, and
+# was tracked — so every `npm run build` produced a spurious diff.
+*.tsbuildinfo
 
 # Environment — never commit. JWT_PRIVATE_KEY and the Neon credentials live here.
 # Ignore every .env variant, then re-admit the committed templates.

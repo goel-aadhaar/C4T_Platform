@@ -37,8 +37,6 @@ export interface ConsentState {
   decidedAt: string
 }
 
-export const CONSENT_DENIED: Omit<ConsentState, 'decidedAt'> = { essential: true, analytics: false }
-
 /**
  * Parses the cookie value. Returns null when there is no decision yet — which
  * is what makes the banner appear, so it must NOT fall back to a default.

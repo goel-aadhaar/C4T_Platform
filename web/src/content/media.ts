@@ -64,7 +64,7 @@ export type PhotoKey = keyof typeof PHOTOS
  * that adjacent detail pages in a family don't open with the same picture.
  * Order is load-bearing — changing it reshuffles every detail page.
  */
-export const PHOTO_ROTATION: readonly PhotoKey[] = [
+const PHOTO_ROTATION: readonly PhotoKey[] = [
   'deviceTesting',
   'triage',
   'scoping',

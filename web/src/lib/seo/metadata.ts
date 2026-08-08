@@ -78,7 +78,7 @@ export function fromRoute(route: RouteDef, overrides: Partial<Metadata> = {}): M
  * enough, for the reason above.
  * ──────────────────────────────────────────────────────────────────────────
  */
-export const OG_IMAGE = {
+const OG_IMAGE = {
   url: '/opengraph-image',
   width: 1200,
   height: 630,

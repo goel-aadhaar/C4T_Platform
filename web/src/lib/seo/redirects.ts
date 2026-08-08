@@ -32,7 +32,7 @@ import type { Redirect } from 'next/dist/lib/load-custom-routes'
  * exclusive and passing both throws.
  * ──────────────────────────────────────────────────────────────────────────
  */
-export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
+const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
   '/Aboutus': '/company/about',
   '/Compatibility': '/services/compatibility-testing',
   '/Game': '/services/game-testing',
@@ -70,7 +70,7 @@ export const LEGACY_REDIRECTS: Readonly<Record<string, string>> = {
  * If the client reinstates any of these sections, delete the entry and add the
  * route back to the registry — in that order, or the rule will shadow the page.
  */
-export const UNBUILT_SECTION_REDIRECTS: Readonly<Record<string, string>> = {
+const UNBUILT_SECTION_REDIRECTS: Readonly<Record<string, string>> = {
   '/book-a-demo': '/contact',
   '/start-a-pilot': '/contact',
   '/trust': '/company/trust',

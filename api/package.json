@@ -2,7 +2,7 @@
   "name": "@crowd4test/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Crowd4Test Platform — Express.js REST API (Milestone 2: Backend Core & Admin Panel)",
+  "description": "Crowd4Test Platform \u2014 Express.js REST API (Milestone 2: Backend Core & Admin Panel)",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {
@@ -27,22 +27,11 @@
     "prisma:format": "prisma format",
     "prisma:validate": "prisma validate",
     "db:seed": "tsx prisma/seed.ts",
+    "sessions:prune": "tsx scripts/prune-sessions.ts",
     "db:reset": "prisma migrate reset --force",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
-  },
-  "lint-staged": {
-    "*.{ts,js,mjs,cjs}": [
-      "prettier --write",
-      "eslint --fix --max-warnings 0"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ],
-    "*.prisma": [
-      "prisma format"
-    ]
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -61,7 +50,6 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.9.16",
-    "pg-boss": "^10.1.5",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "zod": "^3.24.1"
@@ -79,7 +67,6 @@
     "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
-    "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
     "prisma": "^6.2.1",
     "supertest": "^7.0.0",

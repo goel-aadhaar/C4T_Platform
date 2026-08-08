@@ -21,21 +21,12 @@
     "verify:build": "tsx scripts/verify-build.ts",
     "launch-check": "node scripts/launch-check.mjs"
   },
-  "lint-staged": {
-    "*.{ts,tsx,js,mjs,cjs}": [
-      "prettier --write",
-      "eslint --fix --max-warnings 0"
-    ],
-    "*.{json,md,css,yml,yaml}": [
-      "prettier --write"
-    ]
-  },
   "dependencies": {
-    "jose": "^6.2.8",
     "lucide-react": "^1.30.0",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -43,11 +34,9 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.0",
-    "axe-core": "^4.13.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.0",
     "eslint-config-prettier": "^10.1.8",
-    "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

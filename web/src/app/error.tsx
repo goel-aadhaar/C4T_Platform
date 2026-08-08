@@ -1,10 +1,20 @@
 'use client'
 
 import { useEffect } from 'react'
+import { Button } from '@/components/ds'
+import { ERROR_PAGE } from '@/content'
 
 /**
  * Route-level error boundary. Must be a Client Component — React needs the
  * boundary on the client to recover via `reset()`.
+ *
+ * Copy comes from content.md §3.7 via `ERROR_PAGE`. It used to be inline here,
+ * which meant the site had one page whose words lived outside `content/` and
+ * could drift from the source without anyone noticing.
+ *
+ * The shell is deliberately NOT used. If the error came from rendering the nav
+ * or the footer, wrapping the error page in them renders the same fault again
+ * and the boundary loops. A bare page always renders.
  */
 export default function Error({
   error,
@@ -26,14 +36,15 @@ export default function Error({
       style={{ paddingBlock: 'var(--space-13)', maxWidth: 'var(--container-prose)' }}
     >
       <h1 className="c4t-display-md" style={{ marginBottom: 'var(--space-5)' }}>
-        Something broke on our side.
+        {ERROR_PAGE.title}
       </h1>
+
       <p
         className="c4t-body-lg"
         style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-9)' }}
       >
-        Not your fault. Our team has been notified and is on it. Try again in a moment, or email{' '}
-        <a href="mailto:admin@crowd4test.com">admin@crowd4test.com</a> if it&rsquo;s urgent.
+        {ERROR_PAGE.description} <a href={`mailto:${ERROR_PAGE.email}`}>{ERROR_PAGE.email}</a>{' '}
+        {ERROR_PAGE.emailSuffix}
       </p>
 
       {error.digest ? (
@@ -44,29 +55,15 @@ export default function Error({
             font: 'var(--fw-medium) var(--type-mono-sm-size)/1.5 var(--font-mono)',
           }}
         >
-          Reference: {error.digest}
+          {ERROR_PAGE.referenceLabel} {error.digest}
         </p>
       ) : null}
 
-      <button
-        type="button"
-        onClick={reset}
-        className="c4t-btn c4t-btn--primary"
-        style={{
-          // 48px — the spec's primary-CTA touch target. Replaced by the ported
-          // <Button size="md"> in build step 2.
-          minHeight: 'var(--space-10)',
-          padding: '0 var(--space-6)',
-          border: 'none',
-          borderRadius: 'var(--radius-button)',
-          background: 'var(--action-primary-bg)',
-          color: 'var(--text-on-brand)',
-          font: 'var(--fw-medium) var(--type-button-md-size)/1 var(--font-sans)',
-          cursor: 'pointer',
-        }}
-      >
-        Try again
-      </button>
+      {/* Was a hand-rolled <button> carrying a stale note about being replaced
+          by the ported Button "in build step 2". It is step 2's Button now. */}
+      <Button variant="primary" size="lg" onClick={reset}>
+        {ERROR_PAGE.cta}
+      </Button>
     </main>
   )
 }
